@@ -1,6 +1,4 @@
 #!/usr/bin/env python
-from __future__ import with_statement
-
 import signal
 import sys
 
@@ -12,6 +10,10 @@ from servo import Servo
 
 from getch import getch
 import threading
+
+import freenect
+import cv
+import frame_convert
 
 class SharedState:
   def __init__(self):
@@ -69,8 +71,27 @@ controller.reset_all()
 keyboard_thread = KeyboardThread()
 keyboard_thread.start()
 
-while not shared_state.is_terminated():
-  sleep(1)
+cv.NamedWindow('Depth')
+cv.NamedWindow('RGB')
+
+def display_depth(dev, data, timestamp):
+  cv.ShowImage('Depth', frame_convert.pretty_depth_cv(data))
+  if cv.WaitKey(10) == 27:
+    shared_state.terminate()
+
+def display_rgb(dev, data, timestamp):
+  cv.ShowImage('RGB', frame_convert.video_cv(data))
+  if cv.WaitKey(10) == 27:
+    shared_state.terminate()
+
+def body(*args):
+  if shared_state.is_terminated():
+    raise freenect.Kill
+
+freenect.runloop(depth=display_depth,
+                 video=display_rgb,
+                 body=body)
 
 keyboard_thread.join()
+
 serial.close()
