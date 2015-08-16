@@ -1,5 +1,7 @@
-Follow the directions in libfreenect/platform/linux/udev so that sudo permissions are not required to use the kinect.
+Build the libfreenect library from github: https://github.com/OpenKinect/libfreenect
 
 Follow the directions in libfreenect/wrappers/python to build the python module.
+
+Follow the directions in libfreenect/platform/linux/udev so that sudo permissions are not required to use the kinect.
 
 Add libfreenect/wrappers/python to PYTHONPATH environment variable.
