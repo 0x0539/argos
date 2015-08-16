@@ -1,33 +1,67 @@
-import serial
+#!/usr/bin/env python
+
 import sys
-import time
 
+class Controller:
+  def __init__(self, serial, servos):
+    self.serial = serial
+    self.servos = servos
 
-command=sys.argv[1]
-print command
+  def send(self, command):
+    print('Sending: ' + command)
+    self.serial.write("#{0}\r".format(command))
 
-print 'Starting Up Serial Monitor'
+  def reset_all(self):
+    for name in self.servos:
+      self.reset(name)
 
-ser = serial.Serial(port='/dev/ttyUSB0', baudrate=9600, bytesize=8, parity='N', stopbits=1, timeout=None, xonxoff=False, rtscts=False, dsrdtr=False)
+  def reset(self, name):
+    servo = self.servos[name]
+    command = servo.reset_cmd()
+    self.send(command)
 
-if not ser.isOpen():
-    try:
-        ser.open()
+  def move(self, name, position):
+    servo = self.servos[name]
+    command = servo.move_cmd()
+    self.send(command)
 
-    except Exception, e:
-        print "error open serial port: " + str(e)
-        exit()
+  def rotate_pct(self, name, pct):
+    servo = self.servos[name]
+    command = servo.rotate_pct_cmd(pct)
+    self.send(command)
 
-if ser.isOpen():
+class Servo:
+  def __init__(self, index, min_pw, max_pw, neutral_pw=None):
+    if min_pw >= max_pw:
+      raise ValueError('min_pw=%d, max_pw=%d' % (min_pw, max_pw))
+    if min_pw <= 500:
+      raise ValueError('min_pw=%d' % min_pw)
+    if max_pw > 2500:
+      raise ValueError('max_pw=%d' % max_pw)
+    self.index = index
+    self.min_pw = min_pw
+    self.max_pw = max_pw
+    self.neutral_pw = neutral_pw if neutral_pw else ((max_pw + min_pw) / 2)
+    self.last_pw = None
+    if neutral_pw < min_pw or neutral_pw > max_pw:
+      raise ValueError('min_pw=%d, neutral_pw=%d, max_pw=%d' % (min_pw, neutral_pw, max_pw))
 
-    try:
-        ser.flushInput() #flush input buffer, discarding all its contents
-        ser.flushOutput()#flush output buffer, aborting current output
+  def reset_cmd(self):
+    return self.move_cmd(self.neutral_pw)
 
-        ser.write("#{0}\r".format(command))
+  def move_cmd(self, pw):
+    pw = max(min(pw, self.max_pw), self.min_pw)
+    self.last_pw = pw
+    return '%dP%d' % (self.index, pw)
 
-    except Exception, e:
-        print "error communicating...: " + str(e)
-
-else:
-    print "cannot open serial port "
+  def rotate_pct_cmd(self, pct):
+    if self.last_pw is None:
+      raise Exception('tried to % rotate without initial setting')
+    if pct <= -1:
+      raise ValueError('pct must be >-1')
+    if pct >= 1:
+      raise ValueError('pct must be <1')
+    rotate_pw = pct * (self.max_pw - self.min_pw)
+    pw = self.last_pw + int(rotate_pw)
+    return self.move_cmd(pw)
+    
