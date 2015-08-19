@@ -88,9 +88,11 @@ def body(*args):
   if shared_state.is_terminated():
     raise freenect.Kill
 
-freenect.runloop(depth=display_depth,
-                 video=display_rgb,
-                 body=body)
+freenect.runloop(
+  depth=display_depth,
+  video=display_rgb,
+  body=body
+)
 
 keyboard_thread.join()
 
